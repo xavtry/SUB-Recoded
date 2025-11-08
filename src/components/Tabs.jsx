@@ -1,136 +1,136 @@
+import React, { useState, useRef, useEffect } from "react";
+import { Plus, X, RefreshCcw } from "lucide-react";
+import "../index.css";
 
-// src/components/Tabs.jsx
-// 100+ lines - Tabs manager with open/close/rename and simple reorder.
-// Paste to: src/components/Tabs.jsx
+const Tab = ({ tab, isActive, onClick, onClose }) => {
+  return (
+    <div
+      onClick={() => onClick(tab.id)}
+      className={`flex items-center gap-2 px-3 py-2 cursor-pointer select-none rounded-t-md border-b-2 transition-all ${
+        isActive
+          ? "bg-zinc-800 text-white border-blue-400"
+          : "bg-zinc-900 text-zinc-400 border-transparent hover:text-white"
+      }`}
+    >
+      <span className="truncate max-w-[120px]">{tab.title}</span>
+      <X
+        size={14}
+        className="hover:text-red-400"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose(tab.id);
+        }}
+      />
+    </div>
+  );
+};
 
-import React, { useEffect, useRef, useState } from 'react'
+export default function Tabs({ onNewTab, onSelectTab, onCloseTab, tabs, activeId }) {
+  const [scrollX, setScrollX] = useState(0);
+  const scrollRef = useRef(null);
 
-/**
- * Tab shape:
- *  { id: number|string, url: string, title: string, proxy: boolean }
- *
- * Props:
- *  - initialTabs: []
- *  - activeId
- *  - onChange(tabs)
- *  - onSetActive(id)
- */
-export default function Tabs({ initialTabs = [], activeId, onChange, onSetActive }) {
-  const [tabs, setTabs] = useState(initialTabs)
-  const idRef = useRef(1)
+  const scroll = (dir) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const amt = dir === "left" ? -150 : 150;
+    el.scrollBy({ left: amt, behavior: "smooth" });
+  };
 
   useEffect(() => {
-    // re-seed idRef so new ids don't conflict
-    const max = tabs.reduce((m, t) => (t.id > m ? t.id : m), 0)
-    idRef.current = max + 1
-    // notify parent
-    onChange && onChange(tabs)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    onChange && onChange(tabs)
-  }, [tabs, onChange])
-
-  function addTab(url = 'https://example.com', makeActive = true) {
-    const id = idRef.current++
-    const t = { id, url, title: _titleFromUrl(url), proxy: false }
-    setTabs(s => {
-      const next = [...s, t]
-      if (makeActive) onSetActive && onSetActive(id)
-      return next
-    })
-  }
-
-  function closeTab(id) {
-    setTabs(s => {
-      const next = s.filter(t => t.id !== id)
-      if (id === activeId && next.length > 0) {
-        onSetActive && onSetActive(next[Math.max(0, next.length - 1)].id)
-      }
-      return next
-    })
-  }
-
-  function renameTab(id) {
-    const value = prompt('Rename tab (title):')
-    if (value === null) return
-    setTabs(s => s.map(t => t.id === id ? { ...t, title: value } : t))
-  }
-
-  function replaceUrl(id) {
-    const value = prompt('Enter URL:')
-    if (!value) return
-    setTabs(s => s.map(t => t.id === id ? { ...t, url: _norm(value), title: _titleFromUrl(value) } : t))
-  }
-
-  function toggleProxy(id) {
-    setTabs(s => s.map(t => t.id === id ? { ...t, proxy: !t.proxy } : t))
-  }
-
-  function moveTab(oldIndex, newIndex) {
-    if (oldIndex === newIndex) return
-    setTabs(s => {
-      const arr = [...s]
-      const [item] = arr.splice(oldIndex, 1)
-      arr.splice(newIndex, 0, item)
-      return arr
-    })
-  }
+    const el = scrollRef.current;
+    if (!el) return;
+    const activeIndex = tabs.findIndex((t) => t.id === activeId);
+    if (activeIndex !== -1) {
+      const activeTab = el.children[activeIndex];
+      activeTab?.scrollIntoView({ behavior: "smooth", inline: "center" });
+    }
+  }, [activeId, tabs.length]);
 
   return (
-    <div className="flex items-center gap-2 p-2 overflow-x-auto bg-slate-800 app-scrollbar">
-      {tabs.map((t, idx) => (
-        <div
-          key={t.id}
-          className={`flex items-center gap-2 px-3 py-1 rounded whitespace-nowrap ${t.id === activeId ? 'bg-slate-700' : 'bg-slate-900/40 hover:bg-slate-700/30'}`}
-        >
-          <div className="cursor-pointer max-w-[220px] truncate" onClick={() => onSetActive && onSetActive(t.id)} title={t.url}>
-            <div className="text-sm">{t.title}</div>
-            <div className="text-xs text-slate-400 truncate max-w-[220px]">{t.url}</div>
-          </div>
-
-          <div className="flex gap-1">
-            <button title="Rename" onClick={() => renameTab(t.id)} className="text-xs px-2 py-0.5 rounded bg-slate-700">✎</button>
-            <button title="Replace URL" onClick={() => replaceUrl(t.id)} className="text-xs px-2 py-0.5 rounded bg-slate-700">↻</button>
-            <button title="Toggle Proxy" onClick={() => toggleProxy(t.id)} className="text-xs px-2 py-0.5 rounded bg-slate-700">{t.proxy ? 'P' : 'p'}</button>
-            <button title="Close" onClick={() => closeTab(t.id)} className="text-xs px-2 py-0.5 rounded bg-red-600">✕</button>
-          </div>
+    <div className="flex flex-col bg-zinc-900 border-b border-zinc-800 shadow-md">
+      <div className="flex items-center justify-between px-2">
+        <div className="flex items-center overflow-x-auto app-scrollbar" ref={scrollRef}>
+          {tabs.map((tab) => (
+            <Tab
+              key={tab.id}
+              tab={tab}
+              isActive={tab.id === activeId}
+              onClick={onSelectTab}
+              onClose={onCloseTab}
+            />
+          ))}
+          <button
+            onClick={onNewTab}
+            className="px-2 py-2 ml-1 rounded-md hover:bg-zinc-800 transition-colors"
+            title="New Tab"
+          >
+            <Plus size={16} />
+          </button>
         </div>
-      ))}
-
-      <div className="ml-2">
-        <button
-          onClick={() => addTab('https://example.com')}
-          className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600"
-        >
-          + New
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="p-2 hover:bg-zinc-800 rounded-md"
+            title="Scroll left"
+            onClick={() => scroll("left")}
+          >
+            ◀
+          </button>
+          <button
+            className="p-2 hover:bg-zinc-800 rounded-md"
+            title="Scroll right"
+            onClick={() => scroll("right")}
+          >
+            ▶
+          </button>
+        </div>
       </div>
-
-      <div className="ml-auto flex gap-2 items-center">
-        <button onClick={() => setTabs([])} className="px-3 py-1 rounded bg-slate-700/50">Clear</button>
-        <button onClick={() => {
-          const url = prompt('Open URL in new tab:')
-          if (url) addTab(_norm(url))
-        }} className="px-3 py-1 rounded bg-slate-700/50">Open URL...</button>
-      </div>
+      <div className="bg-zinc-800 h-[2px] w-full" />
     </div>
-  )
+  );
 }
 
-/* helpers */
-function _norm(url) {
-  const s = (url || '').trim()
-  if (!s) return 'https://example.com'
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s)) return s
-  return `https://${s}`
-}
-function _titleFromUrl(url) {
-  try {
-    const u = new URL(_norm(url))
-    return u.hostname.replace('www.', '')
-  } catch (e) {
-    return url
-  }
+// Utility hook for tab management (100+ lines total continues)
+export function useTabs(defaultUrl = "https://example.com") {
+  const [tabs, setTabs] = useState([
+    { id: crypto.randomUUID(), title: "New Tab", url: defaultUrl },
+  ]);
+  const [activeId, setActiveId] = useState(tabs[0].id);
+
+  const newTab = (url = defaultUrl) => {
+    const newT = { id: crypto.randomUUID(), title: "New Tab", url };
+    setTabs((t) => [...t, newT]);
+    setActiveId(newT.id);
+  };
+
+  const closeTab = (id) => {
+    setTabs((t) => {
+      const updated = t.filter((tb) => tb.id !== id);
+      if (id === activeId && updated.length > 0) {
+        setActiveId(updated[updated.length - 1].id);
+      }
+      return updated;
+    });
+  };
+
+  const updateTitle = (id, title) => {
+    setTabs((t) =>
+      t.map((tb) => (tb.id === id ? { ...tb, title: title.slice(0, 32) } : tb))
+    );
+  };
+
+  const updateUrl = (id, url) => {
+    setTabs((t) => t.map((tb) => (tb.id === id ? { ...tb, url } : tb)));
+  };
+
+  const selectTab = (id) => setActiveId(id);
+
+  return {
+    tabs,
+    activeId,
+    newTab,
+    closeTab,
+    updateTitle,
+    updateUrl,
+    selectTab,
+  };
 }
